@@ -119,3 +119,10 @@ function upei_roblib_xacml_exts_add_xacml($object, $users_and_roles) {
   }
   $xacml->writeBackToFedora();
 }
+
+/**
+ * Implements hook_uninstall().
+ */
+function upei_roblib_xacml_exts_uninstall() {
+  variable_del('upei_roblib_xacml_exts_use_default_hook');
+}
