@@ -38,7 +38,7 @@ function upei_roblib_xacml_exts_config_form($form, &$form_state) {
     '#title' => t('Use this modules implementation of hook_islandora_object_ingested'),
     '#default_value' => variable_get('upei_roblib_xacml_exts_use_default_hook', FALSE),
     '#description' => t('If checked this modules hook_islandora_object_ingested will add an XACML policy to
-    all basic image and large image cmodels.  These policies are specific to a certain UPEI use case.  If left unchecked
+    all page and book cmodels.  These policies are specific to a certain UPEI use case.  If left unchecked
     this module will not do anything unless you call it\'s upei_roblib_xacml_exts_add_xacml function from another module.'),
   );
   return system_settings_form($form);
