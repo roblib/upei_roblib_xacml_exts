@@ -1,0 +1,121 @@
+<?php
+
+/**
+ * @file
+ * Implementation of robertson library XACML customizations.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function upei_roblib_morpho_exts_menu() {
+
+  $items['admin/islandora/upei_roblib_xacml/configure'] = array(
+    'title' => 'Roblib XACML Customizations',
+    'description' => 'Set default XACML Policies on Islandora object.',
+    'access arguments' => array('administer site configuration'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('upei_roblib_xacml_exts_config_form'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * A form for managing the default roblib XACML customizations
+ *
+ * @param array $form
+ *   A Drupal form array
+ * @param array $form_state
+ *   A Drupal formstate array
+ *
+ * @return array
+ *   A Drupal form
+ */
+function upei_roblib_xacml_exts_config_form($form, &$form_state) {
+  $form['upei_roblib_xacml_exts_use_default_hook'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Use this modules implementation of hook_islandora_object_ingested'),
+    '#default_value' => variable_get('upei_roblib_xacml_exts_use_default_hook', FALSE),
+    '#description' => t('If checked this modules hook_islandora_object_ingested will add an XACML policy to
+    all basic image and large image cmodels.  These policies are specific to a certain UPEI use case.  If left unchecked
+    this module will not do anything unless you call it\'s upei_roblib_xacml_exts_add_xacml function from another module.'),
+  );
+  return system_settings_form($form);
+}
+
+
+/**
+ * An example islandora_ingested hook that calls the add_xacml function
+ *
+ * We have sites where we want to ensure all objects have an XACML Policy so we
+ * can implement this function from custom modules.
+ *
+ */
+
+function upei_roblib_xacml_exts_islandora_object_ingested($object) {
+  if (!variable_get('upei_roblib_xacml_exts_use_default_hook', FALSE)) {
+    return;
+  }
+  $namespace = 'lmmi';
+  if(substr($object->id, 0, strlen($namespace)) !== $namespace){
+    return;
+  }
+  $cmodels = array(
+    'islandora:pageCModel',
+    'islandora:bookCModel',
+  );
+  // Only add a Policy if the object does not already have one.
+  if (count(array_intersect($object->models, $cmodels)) > 0 && empty($object['POLICY']->content)) {
+    $users_and_roles = array(
+      'management_users' => array('admin', 'fedoraAdmin'),
+      'management_roles' => array(
+        'islandora_administrator',
+        'lmmi_editor',
+        'administrator'
+      ),
+      'view_users' => array('admin', 'fedoraAdmin'),
+      'view_roles' => array(
+        'administrator',
+        'authenticated user',
+        'islandora_administrator',
+        'lmmi_editor'
+      )
+    );
+    upei_roblib_xacml_exts_add_xacml($object, $users_and_roles);
+  }
+
+}
+
+
+/**
+ * Adds a default xacml policy to objects.
+ *
+ * @param AbstractObject $object
+ *   An Islandora object.
+ *
+ * @param array $users_and_roles
+ *   An array of users and roles for both viewing and managment
+ *   $arr = array('management_users' => array('manager1', mananager2'),
+ *     'management_roles' => array ('manager_role1', 'manager_role2'),
+ *     'view_users' => array('viewer1', 'viewer2'),
+ *     'view_roles' => array('viewer_role1', 'viewer_role2'));
+ */
+function upei_roblib_xacml_exts_add_xacml($object, $users_and_roles) {
+  module_load_include('inc', 'islandora_xacml_api', 'includes/xacml');
+  //overwriting an existing policy here if one exists.
+  $xacml = new IslandoraXacml($object, '');
+  if (!empty($users_and_roles['management_users']) && is_array($users_and_roles['management_users'])) {
+    $xacml->managementRule->addUser($users_and_roles['management_users']);
+  }
+  if (!empty($users_and_roles['management_roles']) && is_array($users_and_roles['management_roles'])) {
+    $xacml->managementRule->addRole($users_and_roles['management_roles']);
+  }
+  if (!empty($users_and_roles['view_roles']) && is_array($users_and_roles['view_roles'])) {
+    $xacml->viewingRule->addRole($users_and_roles['view_roles']);
+  }
+  if (!empty($users_and_roles['view_users']) && is_array($users_and_roles['view_users'])) {
+    $xacml->viewingRule->addUser($users_and_roles['view_users']);
+  }
+  $xacml->writeBackToFedora();
+}
