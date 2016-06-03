@@ -8,7 +8,7 @@
 /**
  * Implements hook_menu().
  */
-function upei_roblib_morpho_exts_menu() {
+function upei_roblib_xacml_exts_menu() {
 
   $items['admin/islandora/tools/roblib/xacml'] = array(
     'title' => 'Roblib XACML Customizations',
